@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Full Page Capture",
+  "version": "1.0.0",
+  "description": "Capture a whole webpage locally. Preview and download a PNG or a continuous PDF.",
+  "minimum_chrome_version": "118",
+  "permissions": ["activeTab", "debugger", "downloads"],
+  "action": {"default_popup": "popup.html", "default_title": "Capture full page"},
+  "background": {"service_worker": "background.mjs", "type": "module"},
+  "icons": {"16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png"},
+  "content_security_policy": {"extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; object-src 'none'; connect-src 'none'"}
+}

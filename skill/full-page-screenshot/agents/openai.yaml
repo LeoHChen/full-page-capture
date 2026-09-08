@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Page Screenshot"
+  short_description: "Capture whole webpages as images and continuous PDFs"
+  default_prompt: "Use $full-page-screenshot to capture this entire webpage and save the screenshot and a continuous PDF."
