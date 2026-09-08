@@ -6,23 +6,53 @@ function database() {
     request.onerror = () => reject(request.error);
   });
 }
-export async function saveCapture(record) {
+
+async function runTransaction(mode, operation) {
   const db = await database();
   try {
     await new Promise((resolve, reject) => {
-      const tx = db.transaction('captures', 'readwrite');
-      const store = tx.objectStore('captures');
-      store.put(record);
-      const cursor = store.openCursor();
-      cursor.onsuccess = () => { const item = cursor.result; if (item) { if (item.value.created < Date.now() - 86400000) item.delete(); item.continue(); } };
-      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error || new Error('Saving was interrupted.'));
+      const tx = db.transaction('captures', mode);
+      operation(tx.objectStore('captures'));
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('The capture store operation was interrupted.'));
     });
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
+
+export async function deleteExpiredCaptures() {
+  const cutoff = Date.now() - 86400000;
+  await runTransaction('readwrite', store => {
+    const cursor = store.openCursor();
+    cursor.onsuccess = () => {
+      const item = cursor.result;
+      if (!item) return;
+      if (item.value.created < cutoff) item.delete();
+      item.continue();
+    };
+  });
+}
+
+export async function saveCapture(record) {
+  await runTransaction('readwrite', store => store.put(record));
+  await deleteExpiredCaptures();
+}
+
 export async function getCapture(id) {
   const db = await database();
-  try { return await new Promise((resolve, reject) => {
-    const request = db.transaction('captures').objectStore('captures').get(id);
-    request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-  }); } finally { db.close(); }
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction('captures').objectStore('captures').get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function deleteCapture(id) {
+  await runTransaction('readwrite', store => store.delete(id));
 }
