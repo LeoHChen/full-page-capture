@@ -4,7 +4,7 @@ A focused Chrome extension and Codex skill for capturing an entire webpage, with
 
 ## Download
 
-Download `full-page-capture-v0.2.zip` from the [v0.2 release](https://github.com/LeoHChen/full-page-capture/releases/tag/v0.2), unzip it, then load the resulting folder in Chrome as described below.
+Download `full-page-capture-v0.3.zip` from the [v0.3 release](https://github.com/LeoHChen/full-page-capture/releases/tag/v0.3), unzip it, then load the resulting folder in Chrome as described below.
 
 ## Install the Chrome extension
 
@@ -15,6 +15,12 @@ Download `full-page-capture-v0.2.zip` from the [v0.2 release](https://github.com
 5. Pin **Full Page Capture** from Chrome's Extensions menu.
 
 Open an ordinary webpage, click the extension, and choose **Capture full page**. A preview opens when capture finishes. Download **PNG** or **PDF**. PDF is one continuous screenshot page, intended for scrolling and zooming, with image-based text.
+
+PNG and PDF downloads default to `screenshots` inside Chrome's Downloads directory—normally `~/Downloads/screenshots`—without a save dialog. Existing filenames are automatically made unique instead of overwritten.
+
+Open **Download settings** from the popup or preview to choose another subfolder, such as `work/articles`. Leave the folder blank to use the Downloads root, or enable **Ask where to save each file** to choose a location per download. Click **Save settings** to persist your choice on this device; it applies to downloads from already-open previews too. **Restore defaults** saves `screenshots` with the save dialog turned off.
+
+Chrome's [downloads API](https://developer.chrome.com/docs/extensions/reference/api/downloads#type-DownloadOptions) only accepts paths relative to its configured download directory. If you changed Chrome's download location, the subfolder goes there. For a location outside that directory, use the save dialog or change Chrome's own download location. Enter a relative folder, not an absolute path or `~/Downloads/...`.
 
 **Scroll first to load more images** is enabled by default. It scrolls through the initially loaded document for up to about 18 seconds and waits briefly for images. The extension also asks native lazy-loaded images to load even when this option is off. Preloading can trigger normal website lazy loading and scroll listeners. The extension restores your original scroll position afterward. It does not expand collapsed content or nested scrolling panels.
 
@@ -30,7 +36,8 @@ The default keyboard shortcut is `Alt+Shift+P`. You can change it at `chrome://e
 
 - `activeTab`: get the title and URL of the tab you invoked the extension on.
 - `debugger`: temporarily attach to that tab and use Chrome's native full-page screenshot operation. Chrome displays a debugging banner and a broad permission warning because this API is powerful. This extension attaches only when you press Capture and detaches in cleanup, including failure paths.
-- `downloads`: let you choose where to save the image or PDF.
+- `downloads`: save PNG/PDF files to the chosen subfolder, or show a save dialog when requested.
+- `storage`: remember your download folder and save-dialog preference locally on this device.
 
 The extension makes no outbound requests. Capture pixels, page title, source URL, dimensions, and device pixel ratio are stored in extension-local IndexedDB. Captures older than 24 hours are removed on browser startup, preview load, or the next successful capture. The preview also provides **Delete capture** for immediate removal. Downloaded files remain where you save them. Removing the extension removes its local capture store.
 
@@ -64,7 +71,7 @@ To build the same unpacked extension archive used by releases:
 
 ```sh
 mkdir -p dist
-(cd extension && zip -r ../dist/full-page-capture-v0.2.zip . -x '*.DS_Store')
+(cd extension && zip -r ../dist/full-page-capture-v0.3.zip . -x '*.DS_Store')
 ```
 
 The Chrome integration test uses a temporary profile and a local fixture. With Node 22+ and Chrome installed, run `npm run test:browser`. Set `CHROME_PATH` if Chrome is not at its standard macOS path. This test exercises actual page cleanup and screenshot pixels through a DevTools Protocol shim; it does not install the extension.

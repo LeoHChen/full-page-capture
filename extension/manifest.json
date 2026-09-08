@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Full Page Capture",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Capture a whole webpage locally. Preview and download a PNG or a continuous PDF.",
   "minimum_chrome_version": "118",
-  "permissions": ["activeTab", "debugger", "downloads"],
+  "permissions": ["activeTab", "debugger", "downloads", "storage"],
+  "options_ui": {"page": "options.html", "open_in_tab": true},
   "action": {"default_popup": "popup.html", "default_title": "Capture full page"},
   "background": {"service_worker": "background.mjs", "type": "module"},
   "commands": {"_execute_action": {"suggested_key": {"default": "Alt+Shift+P"}}},

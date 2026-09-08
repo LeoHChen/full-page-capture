@@ -1,4 +1,5 @@
-import {captureFilename, jpegToPdf} from './pdf.mjs';
+import {jpegToPdf} from './pdf.mjs';
+import {downloadCapture} from './settings.mjs';
 import {deleteCapture, deleteExpiredCaptures, getCapture} from './store.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -10,8 +11,7 @@ const urls = [];
 async function download(blob, extension) {
   const url = URL.createObjectURL(blob);
   urls.push(url);
-  const name = captureFilename(shot.title, shot.url, shot.created);
-  await chrome.downloads.download({url, filename: `${name}.${extension}`, saveAs: true});
+  await downloadCapture(chrome, url, shot, extension);
 }
 
 async function initialize() {

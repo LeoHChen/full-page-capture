@@ -10,7 +10,17 @@ import {capturePage} from '../extension/capture.mjs';
 
 const profile = await mkdtemp(join(tmpdir(), 'full-page-capture-test-'));
 const fixture = await readFile(new URL('./fixtures/cleanup.html', import.meta.url));
+const assets = new Map(await Promise.all([
+  'options.html', 'options.mjs', 'settings.mjs', 'pdf.mjs', 'style.css',
+  'preview.html', 'preview.mjs', 'store.mjs',
+].map(async name => [`/${name}`, await readFile(new URL(`../extension/${name}`, import.meta.url))])));
 const server = createServer((request, response) => {
+  const path = new URL(request.url, 'http://localhost').pathname;
+  if (assets.has(path)) {
+    response.setHeader('Content-Type', path.endsWith('.mjs') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html');
+    response.end(assets.get(path));
+    return;
+  }
   response.setHeader('Content-Type', 'text/html');
   response.end(fixture);
 });
@@ -123,8 +133,87 @@ try {
   await assert.rejects(capturePage(api, 7, {preload: false, smartCleanup: true}), /Injected screenshot failure/);
   assert.deepEqual(await sourceState(), before, 'failure restores exact inline styles and scroll');
   assert.equal(detached, 3);
+
+  // Exercise the real settings page and preview with storage/downloads stubs.
+  // Preferences survive reloads; downloads are recorded, not written to disk.
+  await send('Page.enable');
+  await send('Page.addScriptToEvaluateOnNewDocument', {source: `
+    window.chrome ||= {};
+    window.chrome.storage = {local: {
+      get: async () => JSON.parse(localStorage.getItem('test-settings') || '{}'),
+      set: async value => {
+        if (window.failStorageWrite) throw new Error('Simulated storage failure');
+        localStorage.setItem('test-settings', JSON.stringify(value));
+      }
+    }};
+    window.requestedDownloads = [];
+    window.chrome.downloads = {download: async options => {
+      window.requestedDownloads.push(options); return window.requestedDownloads.length;
+    }};
+  `});
+  const waitFor = async expression => {
+    for (let count = 0; count < 100; count++) {
+      if (await evaluate(expression)) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error(`UI condition timed out: ${expression}\n${await evaluate('document.body?.innerText')}`);
+  };
+  await send('Page.navigate', {url: `${url}options.html`});
+  await waitFor('!!document.querySelector("#save") && !document.querySelector("#save").disabled');
+  assert.equal(await evaluate('document.querySelector("#folder").value'), 'screenshots');
+  assert.equal(await evaluate('document.querySelector("#ask-where").checked'), false);
+  const submit = async (folder, askWhere) => {
+    await evaluate(`(() => {
+      document.querySelector('#folder').value = ${JSON.stringify(folder)};
+      document.querySelector('#folder').dispatchEvent(new Event('input'));
+      document.querySelector('#ask-where').checked = ${askWhere};
+      document.querySelector('#save').click();
+    })()`);
+    await waitFor('!document.querySelector("#save").disabled');
+  };
+  await submit('Work/台湾 screenshots', true);
+  assert.match(await evaluate('document.querySelector("#settings-status").textContent'), /^Saved/);
+  await send('Page.reload');
+  await waitFor('!!document.querySelector("#save") && !document.querySelector("#save").disabled');
+  assert.equal(await evaluate('document.querySelector("#folder").value'), 'Work/台湾 screenshots');
+  assert.equal(await evaluate('document.querySelector("#ask-where").checked'), true);
+  await submit('../escape', false);
+  assert.match(await evaluate('document.querySelector("#settings-status").textContent'), /^Could not save/);
+  assert.equal(await evaluate('(async () => (await chrome.storage.local.get()).downloadSettings.folder)()'), 'Work/台湾 screenshots');
+  await evaluate('window.failStorageWrite = true');
+  await submit('new-folder', false);
+  assert.match(await evaluate('document.querySelector("#settings-status").textContent'), /Simulated storage failure/);
+  assert.equal(await evaluate('(async () => (await chrome.storage.local.get()).downloadSettings.folder)()'), 'Work/台湾 screenshots');
+  await evaluate('window.failStorageWrite = false; document.querySelector("#reset").click()');
+  await waitFor('document.querySelector("#folder").value === "screenshots" && !document.querySelector("#save").disabled');
+
+  await evaluate(`(async () => {
+    const {saveCapture} = await import('/store.mjs');
+    await saveCapture({...${JSON.stringify({...cleaned, data: undefined})}, id: 'download-test',
+      blob: new Blob([Uint8Array.fromBase64(${JSON.stringify(cleaned.data)})], {type: 'image/png'})});
+  })()`);
+  await send('Page.navigate', {url: `${url}preview.html?id=download-test`});
+  await waitFor('!!document.querySelector("#png") && !document.querySelector("#png").disabled');
+  await evaluate('document.querySelector("#png").click()');
+  await waitFor('window.requestedDownloads.length === 1');
+  const png = await evaluate('window.requestedDownloads[0]');
+  assert.ok(png.filename.startsWith('screenshots/') && png.filename.endsWith('.png'));
+  assert.equal(png.saveAs, false);
+  assert.equal(png.conflictAction, 'uniquify');
+  await evaluate(`(async () => {
+    const {saveSettings} = await import('/settings.mjs');
+    await saveSettings(chrome, {folder: 'Work/台湾 screenshots', askWhere: true});
+    document.querySelector('#pdf').click();
+  })()`);
+  await waitFor('window.requestedDownloads.length === 2');
+  const pdf = await evaluate('window.requestedDownloads[1]');
+  assert.ok(pdf.filename.startsWith('Work/台湾 screenshots/') && pdf.filename.endsWith('.pdf'));
+  assert.equal(pdf.saveAs, true);
+  assert.equal(pdf.conflictAction, 'uniquify');
   console.log(JSON.stringify({passed: true, baselineHeight: baseline.height, cleanedHeight: cleaned.height,
-    cleanup: cleaned.cleanup, originalPixels, cleanPixels, restoredOnSuccessAndFailure: true}, null, 2));
+    cleanup: cleaned.cleanup, originalPixels, cleanPixels, restoredOnSuccessAndFailure: true,
+    settingsUI: 'defaults, persistence, validation, write failure, reset passed',
+    downloadsUI: 'PNG default folder and PDF updated folder/save dialog passed'}, null, 2));
 } finally {
   for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error('Test finished')); }
   socket?.close();

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download settings — Full Page Capture</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="settings">
+    <div class="brand"><span class="mark" aria-hidden="true">↕</span> FULL PAGE CAPTURE</div>
+    <h1>Download settings</h1>
+    <p>Choose where your PNG and PDF captures are saved.</p>
+    <form id="settings-form">
+      <label for="folder">Folder inside Downloads</label>
+      <input id="folder" type="text" autocomplete="off" spellcheck="false" aria-describedby="folder-help destination" disabled>
+      <p id="folder-help" class="small muted">Use a subfolder such as screenshots or work/articles. Leave blank to save directly in Downloads.</p>
+      <p id="destination" role="status">Loading settings…</p>
+      <label class="option"><input id="ask-where" type="checkbox" disabled> Ask where to save each file</label>
+      <p class="small muted">Downloads means Chrome’s configured download location, normally ~/Downloads. To choose a folder elsewhere, enable “Ask where to save each file.”</p>
+      <div class="buttons">
+        <button id="save" type="submit" class="primary" disabled>Save settings</button>
+        <button id="reset" type="button" disabled>Restore defaults</button>
+      </div>
+      <p id="settings-status" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script type="module" src="options.mjs"></script>
+</body>
+</html>

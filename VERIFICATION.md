@@ -2,6 +2,14 @@
 
 Checked on September 8, 2026.
 
+## Completed for v0.3
+
+- 20 Node tests pass: existing capture/PDF tests plus download defaults for both formats, current saved preferences, nested and Unicode folders, Downloads root, reset, invalid paths, storage errors, invalid persisted settings, and download failures.
+- The real settings page runs in the Chrome harness. Defaults load, a custom folder and save-dialog choice survive reload, invalid paths fail without changing stored preferences, simulated write failures surface inline, and restore-defaults persists the original values.
+- The actual preview PNG button requests `screenshots/<name>.png` with `saveAs: false` and `conflictAction: uniquify`. Changing preferences while the preview is open makes its PDF button request the new folder with `saveAs: true`.
+- Existing cleanup screenshot pixel and restoration checks still pass.
+- UI tests stub `chrome.storage.local` using test-origin localStorage and record `chrome.downloads.download` calls. They do not verify native extension storage or write any downloads to the user's disk. Load the extension unpacked to confirm Chrome saves files into its configured Downloads subfolder and shows the native dialog when requested.
+
 ## Completed for v0.2
 
 - 16 Node tests passed, including opt-out, cleanup before dimension measurement, isolated-world restoration after successful/failed screenshot, and partial cleanup failure.

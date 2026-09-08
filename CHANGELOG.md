@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3 — 2026-09-08
+
+- Default PNG and PDF downloads to `screenshots/` inside Chrome's configured Downloads directory (normally `~/Downloads/screenshots`).
+- Add a Download settings page, linked from popup and preview, with a persistent subfolder, optional save dialog, and restore-defaults button ([#2](https://github.com/LeoHChen/full-page-capture/issues/2)).
+- Read current preferences for every download and automatically uniquify conflicting filenames.
+- Validate paths and report storage/download errors. Add `storage` permission for local preferences.
+- Verify defaults, custom paths, both formats, persistence, errors, and the actual settings/preview UI in Chrome with storage/download APIs stubbed.
+
 ## v0.2 — 2026-09-08
 
 - Add optional **Clean page: ads, floating items & footer** capture cleanup ([#1](https://github.com/LeoHChen/full-page-capture/issues/1)).
