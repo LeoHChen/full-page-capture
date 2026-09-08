@@ -66,6 +66,8 @@ function mockApi(failAt) {
         if (method === failAt) throw new Error('capture failure');
         if (method === 'Runtime.evaluate' && args.expression.includes('({x:scrollX')) return {result: {value: {x: 12, y: 450}}};
         if (method === 'Runtime.evaluate' && args.expression === 'devicePixelRatio') return {result: {value: 2}};
+        if (method === 'Page.getFrameTree') return {frameTree: {frame: {id: 'main-frame'}}};
+        if (method === 'Page.createIsolatedWorld') return {executionContextId: 17};
         if (method === 'Page.getLayoutMetrics') return {cssContentSize: {width: 1081, height: 7732}};
         if (method === 'Page.captureScreenshot') return {data: 'aGVsbG8='};
         return {};
@@ -128,4 +130,36 @@ test('extension and skill PDF implementations stay byte-identical', async () => 
     readFile(new URL('../skill/full-page-screenshot/scripts/pdf.mjs', import.meta.url)),
   ]);
   assert.deepEqual(extensionPdf, skillPdf);
+});
+
+test('cleanup is opt-in and runs before measuring the capture; restoration runs after failure', async () => {
+  const plain = mockApi();
+  await capturePage(plain.api, 7, {hideFixedBottom: false});
+  assert.ok(!plain.calls.some(call => call.method === 'Page.createIsolatedWorld'));
+  for (const failAt of [undefined, 'Page.captureScreenshot']) {
+    const {api, calls} = mockApi(failAt);
+    const pending = capturePage(api, 7, {smartCleanup: true, hideFixedBottom: false});
+    if (failAt) await assert.rejects(pending, /capture failure/);
+    else await pending;
+    const clean = calls.findIndex(call => call.args?.contextId === 17 && call.args.expression.endsWith('false)'));
+    const metrics = calls.findIndex(call => call.method === 'Page.getLayoutMetrics');
+    const restore = calls.findIndex(call => call.args?.contextId === 17 && call.args.expression.endsWith('true)'));
+    assert.ok(clean >= 0 && clean < metrics && restore > metrics);
+    assert.match(calls.at(-2).args.expression, /left:12,top:450/);
+    assert.equal(calls.at(-1), 'detach');
+  }
+});
+
+test('partially failed page cleanup still runs restoration before detach', async () => {
+  const {api, calls} = mockApi();
+  const original = api.debugger.sendCommand;
+  api.debugger.sendCommand = async (target, method, args) => {
+    const result = await original(target, method, args);
+    if (args?.contextId === 17 && args.expression.endsWith('false)')) return {exceptionDetails: {text: 'interrupted'}};
+    return result;
+  };
+  await assert.rejects(capturePage(api, 7, {smartCleanup: true}), /cleanup was interrupted/);
+  assert.ok(calls.some(call => call.args?.contextId === 17 && call.args.expression.endsWith('true)')));
+  assert.ok(!calls.some(call => call.method === 'Page.captureScreenshot'));
+  assert.equal(calls.at(-1), 'detach');
 });

@@ -33,6 +33,7 @@ async function run(message) {
     const shot = await capturePage(chrome, message.tabId, {
       preload: message.preload !== false,
       hideFixedBottom: message.hideFixedBottom !== false,
+      smartCleanup: message.smartCleanup === true,
     });
     const bytes = decodeBase64(shot.data);
     delete shot.data;

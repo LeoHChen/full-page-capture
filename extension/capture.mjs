@@ -1,3 +1,5 @@
+import {cleanupExpression} from './cleanup.mjs';
+
 const MAX_DEVICE_DIMENSION = 16384;
 
 export function captureBounds(metrics, dpr = 1) {
@@ -59,12 +61,13 @@ const eagerImagesExpression = `(${async function () {
   ]);
 }})()`;
 
-export async function capturePage(api, tabId, {preload = true, hideFixedBottom = true} = {}) {
+export async function capturePage(api, tabId, {preload = true, hideFixedBottom = true, smartCleanup = false} = {}) {
   const target = {tabId};
   const hideToken = `fpc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   let attached = false;
   let position;
-  let fixedElementsHidden = false;
+  let cleanupContext;
+  let cleanup;
   const command = (method, params = {}, timeoutMs = 30000) => withTimeout(
     api.debugger.sendCommand(target, method, params),
     timeoutMs,
@@ -106,27 +109,21 @@ export async function capturePage(api, tabId, {preload = true, hideFixedBottom =
         throw new Error('The page navigated during capture. Try again when it has finished loading.');
       }
     }
-    if (hideFixedBottom) {
-      await command('Runtime.evaluate', {
-        expression: `(() => {
-          const token = ${JSON.stringify(hideToken)};
-          const style = document.createElement('style');
-          style.id = token;
-          style.textContent = '[' + token + '] { visibility: hidden !important; }';
-          document.documentElement.append(style);
-          let count = 0;
-          for (const element of document.querySelectorAll('body *')) {
-            const rect = element.getBoundingClientRect();
-            if (getComputedStyle(element).position === 'fixed' && rect.height > 0 && rect.bottom >= innerHeight - 1 && rect.top < innerHeight) {
-              element.setAttribute(token, '');
-              count++;
-            }
-          }
-          return count;
-        })()`,
-        returnByValue: true,
+    if (hideFixedBottom || smartCleanup) {
+      const {frameTree} = await command('Page.getFrameTree');
+      const {executionContextId} = await command('Page.createIsolatedWorld', {
+        frameId: frameTree.frame.id,
+        worldName: hideToken,
       });
-      fixedElementsHidden = true;
+      cleanupContext = executionContextId;
+      const result = await command('Runtime.evaluate', {
+        expression: cleanupExpression(hideToken, {hideFixedBottom, smartCleanup}),
+        contextId: cleanupContext,
+        returnByValue: true,
+        timeout: 5000,
+      });
+      if (result.exceptionDetails) throw new Error('Page cleanup was interrupted. Try again with cleanup disabled.');
+      cleanup = result.result?.value;
     }
     const ratio = await command('Runtime.evaluate', {
       expression: 'devicePixelRatio',
@@ -149,18 +146,17 @@ export async function capturePage(api, tabId, {preload = true, hideFixedBottom =
       height: clip.height,
       dpr,
       scale: clip.scale,
+      cleanup: smartCleanup ? cleanup : undefined,
       created: Date.now(),
     };
   } finally {
     if (attached) {
-      if (fixedElementsHidden) {
+      if (cleanupContext !== undefined) {
         await command('Runtime.evaluate', {
-          expression: `(() => {
-            const token = ${JSON.stringify(hideToken)};
-            for (const element of document.querySelectorAll('[' + token + ']')) element.removeAttribute(token);
-            document.getElementById(token)?.remove();
-          })()`,
-        }).catch(() => {});
+          expression: cleanupExpression(hideToken, {}, true),
+          contextId: cleanupContext,
+          timeout: 2000,
+        }, 3000).catch(() => {});
       }
       if (position && Number.isFinite(position.x) && Number.isFinite(position.y)) {
         await command('Runtime.evaluate', {expression: `scrollTo({left:${position.x},top:${position.y},behavior:'instant'})`}).catch(() => {});

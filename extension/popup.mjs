@@ -13,6 +13,7 @@ button.addEventListener('click', async () => {
       tabId: tab.id,
       preload: document.querySelector('#preload').checked,
       hideFixedBottom: document.querySelector('#hide-fixed').checked,
+      smartCleanup: document.querySelector('#smart-cleanup').checked,
     });
     if (!result?.ok) throw new Error(result?.error || 'Could not start capture.');
     window.close();

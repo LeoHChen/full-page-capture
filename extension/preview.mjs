@@ -34,6 +34,10 @@ async function initialize() {
   const reduced = scale < 0.9999 ? ` · resolution reduced to ${(scale * 100).toFixed(1)}% to keep the full page accurate` : '';
   $('#meta').textContent = `${dimensions} · ${output}${reduced} · ${new Date(shot.created).toLocaleString()}`;
   $('#status').textContent = 'Your capture is ready.';
+  if (shot.cleanup) {
+    const {ads = 0, floating = 0, footers = 0} = shot.cleanup;
+    $('#status').textContent += ` Cleanup: ${ads} ad containers, ${floating} floating items, ${footers} site footers removed. Missing content? Recapture with cleanup off.`;
+  }
   for (const id of ['#png', '#pdf', '#zoom', '#delete']) $(id).disabled = false;
 }
 

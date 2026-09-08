@@ -2,6 +2,17 @@
 
 Checked on September 8, 2026.
 
+## Completed for v0.2
+
+- 16 Node tests passed, including opt-out, cleanup before dimension measurement, isolated-world restoration after successful/failed screenshot, and partial cleanup failure.
+- `npm run test:browser` executes the real `capturePage()` through a Chrome DevTools Protocol shim in a fresh headless Chrome profile against a local fixture. It does not install an extension or touch the user's browsing profile.
+- The baseline screenshot is 1,765 px high; cleanup reduces it to 1,301 px. The cleanup counts are 2 ad containers, 3 floating items (sticky toolbar, fixed toolbar, fixed image), and 1 global footer.
+- Screenshot pixel checks confirm the red ad, blue global footer, yellow floating toolbar, and magenta floating image are absent. The green article footer and purple inline image retain exactly the same colored pixel counts.
+- Exact inline style attributes, `!important` priorities, page height, and scroll position are restored after success and an injected screenshot failure. Consent UI and a large fixed background panel remain visible during cleanup.
+- The new popup option is off by default and adds no permissions. Both download formats consume the same cleaned PNG.
+
+Manual checks: load v0.2 unpacked and try cleanup on/off on real articles. Detection is heuristic and does not inspect shadow DOM or iframe contents. An installed-extension click-through is not covered by the CDP shim.
+
 ## Completed for v0.1
 
 - Node tests cover binary PDF offsets and embedded image bytes; one-page dimensions; DPR-aware PDF sizing; Unicode metadata; PDF size limits; invalid images and oversized bounds; the 16,384-device-pixel capture scale; dated host filenames; fast base64 decoding; source-tab activation; scroll restoration and detach on success; cleanup after screenshot failure; no detach after failed attachment; rejection of restricted schemes; navigation interruption; preload failure cleanup; and byte equality between the extension and skill PDF writers.

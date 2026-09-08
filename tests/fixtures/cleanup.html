@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cleanup browser fixture</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-src 'none'">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: white; }
+  #header { height: 80px; }
+  #ad-banner { height: 120px; background: rgb(255,0,0); }
+  #story { height: 1100px; }
+  #inline-image { width: 80px; height: 80px; }
+  #article-footer { height: 60px; background: rgb(0,128,0); }
+  #site-footer { height: 240px; background: rgb(0,0,255); }
+  #toolbar { position: fixed; top: 20px; right: 20px; width: 160px; height: 60px; background: rgb(255,255,0); }
+  #floating-image { position: fixed; right: 20px; bottom: 80px; width: 80px; height: 80px; }
+  #network-slot { width: 200px; height: 100px; border: 0; }
+  #sticky-tools { position: sticky; top: 0; height: 40px; }
+  #cookie-consent { position: fixed; bottom: 0; left: 0; height: 35px; }
+  #large-panel { position: fixed; z-index: -1; top: 0; left: 0; width: 100vw; height: 100vh; }
+</style>
+<header id="header">Article heading, not an ad</header>
+<div id="ad-banner" style="display: block !important; color: black"><div class="ad-slot">Advertisement</div></div>
+<div id="sticky-tools" role="toolbar"><button>Share</button></div>
+<main><article>
+  <div id="story"><h1>Ordinary article</h1><p id="advertising-article">Text about advertising remains.</p>
+    <img id="inline-image" alt="Article photograph" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='purple'/%3E%3C/svg%3E">
+    <div id="address">Address must not be mistaken for an ad.</div>
+  </div>
+  <footer id="article-footer">Author and article sources</footer>
+</article></main>
+<iframe id="network-slot" src="https://ads.doubleclick.net/example"></iframe>
+<footer id="site-footer" style="color: black">Global navigation and copyright</footer>
+<div id="toolbar" role="toolbar" style="visibility: visible !important"><button>Floating share toolbar</button></div>
+<img id="floating-image" alt="Floating promo image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='magenta'/%3E%3C/svg%3E">
+<div id="cookie-consent"><button>Choose consent</button></div>
+<div id="large-panel"><img alt="Fixed background"></div>
